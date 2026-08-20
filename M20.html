@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exchange Desk — Currency Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Mono:wght@400;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a1310;
+    --panel:#122019;
+    --panel-2:#0d1b16;
+    --line: rgba(237,232,219,0.10);
+    --line-strong: rgba(237,232,219,0.20);
+    --brass:#c9a15c;
+    --brass-bright:#eecb8a;
+    --brass-dim:#7d6538;
+    --ivory:#ede8db;
+    --muted:#8fa396;
+    --muted-dim:#5c7266;
+    --up:#7ec49a;
+    --down:#cf8b6f;
+    --radius: 18px;
+    --shadow: 0 26px 70px -24px rgba(0,0,0,0.65);
+    --serif:'Fraunces', serif;
+    --sans:'Manrope', system-ui, sans-serif;
+    --mono:'Space Mono', monospace;
+  }
+
+  [data-theme="light"]{
+    --ink:#efe7d2;
+    --panel:#fbf7ea;
+    --panel-2:#f4ecd6;
+    --line: rgba(28,38,32,0.10);
+    --line-strong: rgba(28,38,32,0.18);
+    --brass:#a97a34;
+    --brass-bright:#8a611f;
+    --brass-dim:#c7a361;
+    --ivory:#20281f;
+    --muted:#5b6a5c;
+    --muted-dim:#93a08e;
+    --up:#3f8f63;
+    --down:#b4523a;
+    --shadow: 0 26px 60px -28px rgba(40,32,10,0.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 12% -10%, rgba(201,161,92,0.09), transparent 60%),
+      radial-gradient(900px 500px at 105% 0%, rgba(126,196,154,0.06), transparent 55%),
+      var(--ink);
+    color:var(--ivory);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px 16px;
+    position:relative;
+    transition:background-color .4s ease, color .4s ease;
+  }
+  /* subtle paper grain — the one textural risk that ties the whole thing to "ledger" */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none;
+    opacity:.05;
+    mix-blend-mode:overlay;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%25" height="100%25" filter="url(%23n)"/></svg>');
+  }
+
+  .app{ width:100%; max-width:640px; position:relative; z-index:1; }
+
+  @keyframes fade-up{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
+  .header, .ticker, .card, .footer-note{ animation:fade-up .6s cubic-bezier(.2,.8,.2,1) both; }
+  .ticker{ animation-delay:.08s; }
+  .card{ animation-delay:.15s; }
+  .footer-note{ animation-delay:.24s; }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    margin-bottom:20px;
+    padding:0 2px;
+    gap:12px;
+  }
+  .wordmark{ display:flex; align-items:center; gap:10px; }
+  .emblem{ width:30px; height:30px; color:var(--brass); flex:none; }
+  .wordmark-text{ display:flex; flex-direction:column; gap:2px; }
+  .wordmark-title{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:19px;
+    letter-spacing:0.01em;
+    color:var(--ivory);
+    line-height:1;
+  }
+  .wordmark-sub{
+    font-size:9.5px;
+    letter-spacing:0.24em;
+    text-transform:uppercase;
+    color:var(--muted-dim);
+    font-weight:700;
+  }
+
+  .header-right{ display:flex; align-items:center; gap:10px; }
+
+  .status-stamp{
+    display:flex; align-items:center; gap:6px;
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:700;
+    border:1px solid var(--line-strong);
+    border-radius:20px;
+    padding:5px 10px 5px 8px;
+  }
+  .status-stamp .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--up);
+    box-shadow:0 0 0 3px rgba(126,196,154,0.18);
+    flex:none;
+  }
+  .status-stamp.offline .dot{ background:var(--down); box-shadow:0 0 0 3px rgba(207,139,111,0.18); }
+
+  .updated{
+    font-size:11px;
+    color:var(--muted-dim);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:var(--mono);
+  }
+  .icon-btn{
+    background:none;
+    border:1px solid var(--line-strong);
+    color:var(--muted);
+    width:26px;height:26px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:transform .5s ease, border-color .2s ease, color .2s ease, background .2s ease;
+    padding:0;
+    flex:none;
+  }
+  .icon-btn:hover{ color:var(--brass-bright); border-color:var(--brass); }
+  .icon-btn.spinning{ transform:rotate(360deg); }
+  .icon-btn svg{ width:13px; height:13px; }
+  #themeBtn svg{ width:14px; height:14px; }
+  #themeBtn .moon{ display:none; }
+  [data-theme="light"] #themeBtn .sun{ display:none; }
+  [data-theme="light"] #themeBtn .moon{ display:inline-flex; }
+
+  /* Ticker */
+  .ticker{
+    position:relative;
+    overflow:hidden;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    padding:10px 0;
+    margin-bottom:24px;
+    mask-image:linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+    -webkit-mask-image:linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  }
+  .ticker-track{
+    display:flex;
+    width:max-content;
+    animation:scroll-left 34s linear infinite;
+  }
+  .ticker.paused .ticker-track{ animation-play-state: paused; }
+  @keyframes scroll-left{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+  .ticker-item{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:var(--muted);
+    white-space:nowrap;
+    padding:0 18px;
+    border-right:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .ticker-item b{ color:var(--ivory); font-weight:700; }
+  .ticker-item .rate-val{ color:var(--brass-bright); }
+
+  /* Card */
+  .card{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:28px 26px 24px;
+    position:relative;
+  }
+  .corner{ position:absolute; width:13px; height:13px; opacity:.6; pointer-events:none; }
+  .corner.tl{ top:9px; left:9px; border-top:1.5px solid var(--brass); border-left:1.5px solid var(--brass); border-radius:3px 0 0 0; }
+  .corner.tr{ top:9px; right:9px; border-top:1.5px solid var(--brass); border-right:1.5px solid var(--brass); border-radius:0 3px 0 0; }
+  .corner.bl{ bottom:9px; left:9px; border-bottom:1.5px solid var(--brass); border-left:1.5px solid var(--brass); border-radius:0 0 0 3px; }
+  .corner.br{ bottom:9px; right:9px; border-bottom:1.5px solid var(--brass); border-right:1.5px solid var(--brass); border-radius:0 0 3px 0; }
+
+  .ticket-id{
+    text-align:right;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.05em;
+    color:var(--muted-dim);
+    margin-bottom:14px;
+  }
+
+  .convert-grid{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    gap:14px;
+    align-items:center;
+  }
+  @media (max-width:520px){
+    .convert-grid{ grid-template-columns:1fr; }
+    .swap-wrap{ transform:rotate(90deg); margin:2px auto; }
+    .header{ flex-wrap:wrap; }
+  }
+
+  .field{
+    background:rgba(0,0,0,0.14);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 14px 12px;
+    transition:border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  [data-theme="light"] .field{ background:rgba(28,38,32,0.03); }
+  .field:focus-within{
+    border-color:var(--brass);
+    box-shadow:0 0 0 3px rgba(201,161,92,0.10);
+  }
+  .field-label{
+    font-size:10px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--muted-dim);
+    font-weight:700;
+    margin-bottom:10px;
+    display:block;
+  }
+
+  .currency-select{ position:relative; }
+  .currency-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:none;
+    border:none;
+    color:var(--ivory);
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+    padding:2px 0 10px;
+    width:100%;
+  }
+  .currency-btn .flag{ font-size:18px; line-height:1; }
+  .currency-btn .code{ letter-spacing:0.02em; }
+  .currency-btn .chev{ margin-left:auto; color:var(--muted-dim); font-size:11px; transition:transform .2s ease; }
+  .currency-btn[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+
+  .amount-input{
+    width:100%;
+    background:none;
+    border:none;
+    outline:none;
+    color:var(--ivory);
+    font-family:var(--mono);
+    font-size:23px;
+    font-weight:700;
+    letter-spacing:0.01em;
+    border-top:1px solid var(--line);
+    padding-top:10px;
+  }
+  .amount-input::placeholder{ color:var(--muted-dim); }
+  .amount-input::-webkit-outer-spin-button,
+  .amount-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .amount-input[type=number]{ -moz-appearance:textfield; }
+
+  .swap-wrap{ display:flex; justify-content:center; }
+  .swap-btn{
+    width:40px;height:40px;
+    border-radius:50%;
+    background:var(--panel);
+    border:1px solid var(--brass);
+    color:var(--brass-bright);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:background .2s ease, transform .3s cubic-bezier(.4,1.6,.4,1), box-shadow .2s ease;
+    box-shadow:0 0 0 4px rgba(201,161,92,0.07);
+  }
+  .swap-btn:hover{ background:rgba(201,161,92,0.14); box-shadow:0 0 0 6px rgba(201,161,92,0.11); }
+  .swap-btn.spin{ transform:rotate(180deg); }
+  .swap-btn svg{ width:16px; height:16px; }
+
+  /* Dropdown */
+  .dropdown-panel{
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    width:272px;
+    max-width:82vw;
+    background:var(--panel-2);
+    border:1px solid var(--line-strong);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    z-index:30;
+    overflow:hidden;
+    display:none;
+  }
+  .dropdown-panel.open{ display:block; animation:fade-up .18s ease both; }
+  .dropdown-search{ padding:10px; border-bottom:1px solid var(--line); }
+  .dropdown-search input{
+    width:100%;
+    background:rgba(0,0,0,0.16);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    color:var(--ivory);
+    font-family:var(--sans);
+    font-size:13px;
+    outline:none;
+  }
+  [data-theme="light"] .dropdown-search input{ background:rgba(28,38,32,0.04); }
+  .dropdown-search input:focus{ border-color:var(--brass); }
+  .dropdown-list{ max-height:240px; overflow-y:auto; }
+  .dropdown-list::-webkit-scrollbar{ width:8px; }
+  .dropdown-list::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:8px; }
+  .dropdown-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 12px;
+    cursor:pointer;
+    font-size:13.5px;
+  }
+  .dropdown-item:hover, .dropdown-item.active{ background:rgba(201,161,92,0.10); }
+  .dropdown-item .flag{ font-size:16px; }
+  .dropdown-item .code{ font-weight:700; min-width:38px; }
+  .dropdown-item .name{ color:var(--muted); font-size:12px; }
+  .dropdown-empty{ padding:14px; color:var(--muted-dim); font-size:12.5px; text-align:center; }
+
+  /* Ticket tear line */
+  .tear-line{
+    position:relative;
+    height:0;
+    margin:22px -26px 0;
+    border-top:1.5px dashed var(--line-strong);
+  }
+  .tear-line::before, .tear-line::after{
+    content:"";
+    position:absolute; top:-9px;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:var(--ink);
+  }
+  .tear-line::before{ left:-9px; }
+  .tear-line::after{ right:-9px; }
+
+  .rate-line{
+    margin-top:18px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .rate-text-group{ display:flex; flex-direction:column; gap:4px; }
+  .rate-text{ font-family:var(--mono); font-size:14.5px; color:var(--brass-bright); }
+  .rate-text .dim{ color:var(--muted); }
+  .rate-text-alt{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .rate-text-alt .dim{ color:var(--muted-dim); }
+  .rate-actions{ display:flex; align-items:center; gap:8px; flex:none; }
+  .star-btn{
+    width:34px; height:34px;
+    border-radius:50%;
+    background:none;
+    border:1px solid var(--line-strong);
+    color:var(--muted);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    padding:0;
+    flex:none;
+    transition:all .2s ease;
+  }
+  .star-btn svg{ width:15px; height:15px; }
+  .star-btn:hover{ border-color:var(--brass); color:var(--brass-bright); }
+  .star-btn.active{ border-color:var(--brass); color:var(--brass-bright); background:rgba(201,161,92,0.12); }
+  .star-btn.active svg polygon{ fill:var(--brass-bright); }
+  .copy-btn{
+    background:none;
+    border:1px solid var(--line-strong);
+    color:var(--muted);
+    font-family:var(--sans);
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    padding:7px 13px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .copy-btn:hover{ border-color:var(--brass); color:var(--brass-bright); }
+  .copy-btn.copied{ border-color:var(--up); color:var(--up); }
+
+  /* Sparkline */
+  .sparkline-section{
+    margin-top:16px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px 10px;
+    background:rgba(0,0,0,0.10);
+  }
+  [data-theme="light"] .sparkline-section{ background:rgba(28,38,32,0.03); }
+  .sparkline-header{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    margin-bottom:6px;
+  }
+  .sparkline-label{
+    font-size:10px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--muted-dim); font-weight:700;
+  }
+  .sparkline-label #sparklinePair{ letter-spacing:0.02em; text-transform:none; color:var(--muted); }
+  .sparkline-delta{ font-family:var(--mono); font-size:11.5px; font-weight:700; color:var(--muted-dim); }
+  .sparkline-delta.up{ color:var(--up); }
+  .sparkline-delta.down{ color:var(--down); }
+  .sparkline-chart{ height:42px; }
+  .sparkline-chart svg{ width:100%; height:100%; display:block; overflow:visible; }
+  .sparkline-empty{
+    display:flex; align-items:center; height:42px;
+    font-family:var(--mono); font-size:11px; color:var(--muted-dim);
+  }
+
+  /* Quick pairs */
+  .quick-pairs-label{
+    font-size:10px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--muted-dim); font-weight:700; margin:20px 0 9px;
+  }
+  .quick-pairs{ display:flex; flex-wrap:wrap; gap:8px; }
+  .pair-pill{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--muted);
+    background:rgba(0,0,0,0.10);
+    border:1px solid var(--line);
+    padding:6px 11px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  [data-theme="light"] .pair-pill{ background:rgba(28,38,32,0.03); }
+  .pair-pill:hover{ border-color:var(--brass); color:var(--brass-bright); background:rgba(201,161,92,0.07); }
+  .pair-pill.active{ border-color:var(--brass); color:var(--brass-bright); }
+  .pair-pill .pin{ color:var(--brass); margin-right:1px; }
+
+  /* Multi-currency breakdown */
+  .breakdown-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:8px;
+  }
+  @media (min-width:460px){
+    .breakdown-grid{ grid-template-columns:repeat(3, 1fr); }
+  }
+  .breakdown-item{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 11px;
+    background:rgba(0,0,0,0.08);
+  }
+  [data-theme="light"] .breakdown-item{ background:rgba(28,38,32,0.025); }
+  .breakdown-item .bc-code{
+    display:flex; align-items:center; gap:5px;
+    font-size:11px; font-weight:700; letter-spacing:0.03em;
+    color:var(--muted); margin-bottom:5px;
+  }
+  .breakdown-item .bc-code .flag{ font-size:13px; }
+  .breakdown-item .bc-val{
+    font-family:var(--mono); font-size:14px; font-weight:700;
+    color:var(--brass-bright);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .footer-note{
+    text-align:center;
+    font-size:11px;
+    color:var(--muted-dim);
+    margin-top:20px;
+    letter-spacing:0.02em;
+    line-height:1.6;
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track{ animation:none; }
+    .swap-btn, .icon-btn{ transition:none; }
+    .header, .ticker, .card, .footer-note{ animation:none; }
+  }
+
+  :focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="wordmark">
+      <svg class="emblem" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <circle cx="16" cy="16" r="12.5"/>
+        <circle cx="16" cy="16" r="8.2"/>
+        <path d="M16 10.2v11.6M13.2 12.4c0-1.3 1.2-2.2 2.8-2.2s2.8.8 2.8 2c0 3-5.6 1.6-5.6 4.6 0 1.3 1.2 2.2 2.8 2.2s2.8-.9 2.8-2.2" stroke-linecap="round"/>
+      </svg>
+      <div class="wordmark-text">
+        <span class="wordmark-title">Exchange Desk</span>
+        <span class="wordmark-sub">Live FX Ticket</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="status-stamp" id="statusStamp"><span class="dot"></span><span id="statusText">Live</span></span>
+      <span class="updated" id="updatedText">connecting…</span>
+      <button class="icon-btn" id="refreshBtn" aria-label="Refresh rates" title="Refresh rates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+      </button>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle light/dark theme" title="Toggle theme">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M20.5 14.5a8.5 8.5 0 1 1-9-11 7 7 0 0 0 9 11z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="ticker" id="ticker">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <div class="card">
+    <div class="corner tl" aria-hidden="true"></div>
+    <div class="corner tr" aria-hidden="true"></div>
+    <div class="corner bl" aria-hidden="true"></div>
+    <div class="corner br" aria-hidden="true"></div>
+
+    <div class="ticket-id" id="ticketId" aria-hidden="true"></div>
+
+    <div class="convert-grid">
+      <div class="field currency-select" id="fromField">
+        <span class="field-label">From</span>
+        <button class="currency-btn" id="fromBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span class="flag" id="fromFlag">🇺🇸</span>
+          <span class="code" id="fromCode">USD</span>
+          <span class="chev">▾</span>
+        </button>
+        <input class="amount-input" id="fromAmount" inputmode="decimal" type="text" value="1,000" aria-label="Amount to convert">
+        <div class="dropdown-panel" id="fromDropdown" role="listbox"></div>
+      </div>
+
+      <div class="swap-wrap">
+        <button class="swap-btn" id="swapBtn" aria-label="Swap currencies" title="Swap currencies">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-4 4 4 4"/><path d="M3 14h13a4 4 0 0 0 4-4"/><path d="M17 14l4-4-4-4"/><path d="M21 10H8a4 4 0 0 0-4 4"/></svg>
+        </button>
+      </div>
+
+      <div class="field currency-select" id="toField">
+        <span class="field-label">To</span>
+        <button class="currency-btn" id="toBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span class="flag" id="toFlag">🇮🇳</span>
+          <span class="code" id="toCode">INR</span>
+          <span class="chev">▾</span>
+        </button>
+        <input class="amount-input" id="toAmount" inputmode="decimal" type="text" value="0" aria-label="Converted amount">
+        <div class="dropdown-panel" id="toDropdown" role="listbox"></div>
+      </div>
+    </div>
+
+    <div class="tear-line" aria-hidden="true"></div>
+
+    <div class="rate-line">
+      <div class="rate-text-group">
+        <span class="rate-text" id="rateText">1 USD <span class="dim">=</span> — INR</span>
+        <span class="rate-text-alt" id="rateTextAlt">1 INR <span class="dim">=</span> — USD</span>
+      </div>
+      <div class="rate-actions">
+        <button class="star-btn" id="starBtn" aria-label="Favourite this pair" aria-pressed="false" title="Favourite this pair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+        <button class="copy-btn" id="copyBtn">Copy result</button>
+      </div>
+    </div>
+
+    <div class="sparkline-section">
+      <div class="sparkline-header">
+        <span class="sparkline-label">7-day trend · <span id="sparklinePair">USD/INR</span></span>
+        <span class="sparkline-delta" id="sparklineDelta"></span>
+      </div>
+      <div class="sparkline-chart" id="sparklineChart"><span class="sparkline-empty">loading…</span></div>
+    </div>
+
+    <div class="quick-pairs-label" style="margin-top:20px;">Multi-currency breakdown</div>
+    <div class="breakdown-grid" id="breakdownGrid"></div>
+
+    <div id="quickPairsWrap"></div>
+  </div>
+
+  <div class="footer-note">Live rates refresh on load and on demand · if a live source can't be reached, a labeled snapshot is used instead · for reference only, not financial advice</div>
+</div>
+
+<script>
+(function(){
+  const CURRENCIES = [
+    {code:'USD', name:'US Dollar', flag:'🇺🇸'},
+    {code:'EUR', name:'Euro', flag:'🇪🇺'},
+    {code:'GBP', name:'British Pound', flag:'🇬🇧'},
+    {code:'JPY', name:'Japanese Yen', flag:'🇯🇵'},
+    {code:'INR', name:'Indian Rupee', flag:'🇮🇳'},
+    {code:'AUD', name:'Australian Dollar', flag:'🇦🇺'},
+    {code:'CAD', name:'Canadian Dollar', flag:'🇨🇦'},
+    {code:'CHF', name:'Swiss Franc', flag:'🇨🇭'},
+    {code:'CNY', name:'Chinese Yuan', flag:'🇨🇳'},
+    {code:'SGD', name:'Singapore Dollar', flag:'🇸🇬'},
+    {code:'HKD', name:'Hong Kong Dollar', flag:'🇭🇰'},
+    {code:'NZD', name:'New Zealand Dollar', flag:'🇳🇿'},
+    {code:'SEK', name:'Swedish Krona', flag:'🇸🇪'},
+    {code:'NOK', name:'Norwegian Krone', flag:'🇳🇴'},
+    {code:'ZAR', name:'South African Rand', flag:'🇿🇦'},
+    {code:'AED', name:'UAE Dirham', flag:'🇦🇪'},
+    {code:'SAR', name:'Saudi Riyal', flag:'🇸🇦'},
+    {code:'THB', name:'Thai Baht', flag:'🇹🇭'},
+    {code:'MXN', name:'Mexican Peso', flag:'🇲🇽'},
+    {code:'BRL', name:'Brazilian Real', flag:'🇧🇷'},
+    {code:'KRW', name:'South Korean Won', flag:'🇰🇷'},
+    {code:'IDR', name:'Indonesian Rupiah', flag:'🇮🇩'},
+    {code:'MYR', name:'Malaysian Ringgit', flag:'🇲🇾'},
+    {code:'PHP', name:'Philippine Peso', flag:'🇵🇭'},
+    {code:'TRY', name:'Turkish Lira', flag:'🇹🇷'},
+    {code:'RUB', name:'Russian Ruble', flag:'🇷🇺'},
+    {code:'PLN', name:'Polish Zloty', flag:'🇵🇱'},
+    {code:'DKK', name:'Danish Krone', flag:'🇩🇰'},
+    {code:'ILS', name:'Israeli Shekel', flag:'🇮🇱'},
+    {code:'VND', name:'Vietnamese Dong', flag:'🇻🇳'},
+  ];
+
+  // Static fallback rates (relative to USD), only used if every live source fails.
+  const FALLBACK_RATES = {
+    USD:1, EUR:0.856, GBP:0.735, JPY:158.2, INR:95.6, AUD:1.405, CAD:1.38,
+    CHF:0.80, CNY:6.72, SGD:1.27, HKD:7.84, NZD:1.68, SEK:9.44, NOK:9.6,
+    ZAR:16.8, AED:3.67, SAR:3.75, THB:32.8, MXN:16.96, BRL:5.24, KRW:1389,
+    IDR:17765, MYR:4.04, PHP:61.5, TRY:44.2, RUB:80, PLN:3.72, DKK:6.51,
+    ILS:3.75, VND:24950
+  };
+  const FALLBACK_SNAPSHOT_DATE = '2026-08-20';
+
+  const state = { rates: null, base: 'USD', from: 'USD', to: 'INR', lastUpdated: null, live: false };
+
+  const $ = (id) => document.getElementById(id);
+  const byCode = (code) => CURRENCIES.find(c => c.code === code);
+
+  function fmtNumber(n, maxFrac){
+    if (!isFinite(n)) return '—';
+    const opts = { maximumFractionDigits: maxFrac ?? 2, minimumFractionDigits: 0 };
+    return n.toLocaleString('en-US', opts);
+  }
+
+  function parseAmount(str){
+    const cleaned = String(str).replace(/,/g, '').trim();
+    const n = parseFloat(cleaned);
+    return isFinite(n) ? n : 0;
+  }
+
+  function rateFor(from, to){
+    if (!state.rates) return null;
+    const rf = state.rates[from], rt = state.rates[to];
+    if (!rf || !rt) return null;
+    return rt / rf;
+  }
+
+  function convert(amount, from, to){
+    const r = rateFor(from, to);
+    if (r === null) return null;
+    return amount * r;
+  }
+
+  function updateFieldDisplay(){
+    const f = byCode(state.from), t = byCode(state.to);
+    $('fromFlag').textContent = f.flag;
+    $('fromCode').textContent = f.code;
+    $('toFlag').textContent = t.flag;
+    $('toCode').textContent = t.code;
+  }
+
+  function recompute(source){
+    if (source === 'to'){
+      const amt = parseAmount($('toAmount').value);
+      const r = convert(amt, state.to, state.from);
+      $('fromAmount').value = r === null ? $('fromAmount').value : fmtNumber(r);
+    } else {
+      const amt = parseAmount($('fromAmount').value);
+      const r = convert(amt, state.from, state.to);
+      $('toAmount').value = r === null ? $('toAmount').value : fmtNumber(r);
+    }
+    updateRateLine();
+    highlightActivePair();
+    updateStarBtn();
+    renderBreakdown();
+  }
+
+  function updateRateLine(){
+    const r = rateFor(state.from, state.to);
+    const rInv = rateFor(state.to, state.from);
+    $('rateText').innerHTML = r === null
+      ? `1 ${state.from} <span class="dim">=</span> — ${state.to}`
+      : `1 ${state.from} <span class="dim">=</span> ${fmtNumber(r, 4)} ${state.to}`;
+    $('rateTextAlt').innerHTML = rInv === null
+      ? `1 ${state.to} <span class="dim">=</span> — ${state.from}`
+      : `1 ${state.to} <span class="dim">=</span> ${fmtNumber(rInv, 6)} ${state.from}`;
+  }
+
+  function buildTicker(){
+    const pairs = ['EUR','GBP','JPY','INR','AUD','CAD','CNY','CHF'].filter(c => c !== state.from);
+    const items = pairs.map(code => {
+      const r = rateFor(state.from, code);
+      return `<span class="ticker-item"><b>${state.from}/${code}</b><span class="rate-val">${r === null ? '—' : fmtNumber(r, 4)}</span></span>`;
+    }).join('');
+    $('tickerTrack').innerHTML = items + items;
+  }
+
+  const PRESETS = [
+    ['USD','INR'], ['EUR','USD'], ['GBP','USD'], ['USD','JPY'],
+    ['USD','CNY'], ['EUR','GBP'], ['AUD','USD'], ['USD','SGD']
+  ];
+
+  /* ---- Favourites (star / pin pairs) ---- */
+  const FAV_KEY = 'exchangeDesk.favourites';
+  function loadFavourites(){
+    try { const v = JSON.parse(localStorage.getItem(FAV_KEY)); return Array.isArray(v) ? v : []; }
+    catch(e){ return []; }
+  }
+  function saveFavourites(){
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(favourites)); } catch(e){ /* storage unavailable */ }
+  }
+  let favourites = loadFavourites();
+  const pairKey = (a,b) => a + '_' + b;
+
+  function toggleFavourite(){
+    const key = pairKey(state.from, state.to);
+    const idx = favourites.indexOf(key);
+    if (idx === -1) favourites.unshift(key);
+    else favourites.splice(idx, 1);
+    favourites = favourites.slice(0, 10);
+    saveFavourites();
+    updateStarBtn();
+    buildQuickPairs();
+  }
+
+  function updateStarBtn(){
+    const active = favourites.includes(pairKey(state.from, state.to));
+    $('starBtn').classList.toggle('active', active);
+    $('starBtn').setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
+
+  function buildQuickPairs(){
+    const favSet = new Set(favourites);
+    const favPairs = favourites
+      .map(k => k.split('_'))
+      .filter(([a,b]) => byCode(a) && byCode(b));
+    const presetPairs = PRESETS.filter(([a,b]) => !favSet.has(pairKey(a,b)));
+
+    let html = '';
+    if (favPairs.length){
+      html += `<div class="quick-pairs-label" style="margin-top:0;">Favourites</div>`;
+      html += `<div class="quick-pairs">` + favPairs.map(([a,b]) =>
+        `<button class="pair-pill" data-from="${a}" data-to="${b}"><span class="pin">★</span>${a} → ${b}</button>`
+      ).join('') + `</div>`;
+    }
+    html += `<div class="quick-pairs-label"${favPairs.length ? '' : ' style="margin-top:0;"'}>Common tickets</div>`;
+    html += `<div class="quick-pairs">` + presetPairs.map(([a,b]) =>
+      `<button class="pair-pill" data-from="${a}" data-to="${b}">${a} → ${b}</button>`
+    ).join('') + `</div>`;
+
+    $('quickPairsWrap').innerHTML = html;
+    $('quickPairsWrap').querySelectorAll('.pair-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.from = btn.dataset.from;
+        state.to = btn.dataset.to;
+        updateFieldDisplay();
+        recompute('from');
+        buildTicker();
+        updateSparkline();
+      });
+    });
+    highlightActivePair();
+  }
+
+  function highlightActivePair(){
+    $('quickPairsWrap').querySelectorAll('.pair-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.from === state.from && btn.dataset.to === state.to);
+    });
+  }
+
+  /* ---- Multi-currency breakdown ---- */
+  const BREAKDOWN_DEFAULT = ['EUR','GBP','JPY','INR','AUD','CNY','GBP','CHF'];
+  const NO_DECIMAL = new Set(['JPY','KRW','IDR','VND']);
+
+  function renderBreakdown(){
+    const amt = parseAmount($('fromAmount').value);
+    const favTargets = favourites
+      .map(k => k.split('_')[1])
+      .filter(c => byCode(c));
+    const codes = [...new Set([...favTargets, ...BREAKDOWN_DEFAULT])]
+      .filter(c => c !== state.from)
+      .slice(0, 6);
+
+    $('breakdownGrid').innerHTML = codes.map(code => {
+      const c = byCode(code);
+      const r = rateFor(state.from, code);
+      const val = r === null ? '—' : fmtNumber(amt * r, NO_DECIMAL.has(code) ? 0 : 2);
+      return `<div class="breakdown-item">
+        <div class="bc-code"><span class="flag">${c.flag}</span>${c.code}</div>
+        <div class="bc-val">${val}</div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ---- Historical sparkline ---- */
+  let sparklineReq = { from:null, to:null };
+
+  async function updateSparkline(){
+    const from = state.from, to = state.to;
+    sparklineReq = { from, to };
+    $('sparklinePair').textContent = `${from}/${to}`;
+    $('sparklineChart').innerHTML = `<span class="sparkline-empty">loading trend…</span>`;
+    $('sparklineDelta').textContent = '';
+    $('sparklineDelta').className = 'sparkline-delta';
+
+    const days = 7;
+    const today = new Date();
+    const dateStrs = [];
+    for (let i = days; i >= 0; i--){
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dateStrs.push(d.toISOString().slice(0, 10));
+    }
+
+    const results = await Promise.all(dateStrs.map(async (dateStr) => {
+      try {
+        const url = `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${dateStr}/v1/currencies/${from.toLowerCase()}.json`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const table = data && data[from.toLowerCase()];
+        const rate = table ? table[to.toLowerCase()] : null;
+        return (typeof rate === 'number') ? { date: dateStr, rate } : null;
+      } catch(e){ return null; }
+    }));
+
+    // bail out if the pair changed while these requests were in flight
+    if (sparklineReq.from !== from || sparklineReq.to !== to) return;
+
+    renderSparkline(results.filter(Boolean));
+  }
+
+  function renderSparkline(points){
+    const chart = $('sparklineChart');
+    if (points.length < 2){
+      chart.innerHTML = `<span class="sparkline-empty">History unavailable for this pair</span>`;
+      return;
+    }
+    const vals = points.map(p => p.rate);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const w = 300, h = 40, pad = 3;
+    const range = (max - min) || (max * 0.001) || 1;
+    const stepX = (w - pad * 2) / (points.length - 1);
+    const coords = vals.map((v, i) => {
+      const x = pad + i * stepX;
+      const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+      return [x, y];
+    });
+    const pathD = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c[0].toFixed(2) + ',' + c[1].toFixed(2)).join(' ');
+    const areaD = `${pathD} L${coords[coords.length - 1][0].toFixed(2)},${h} L${coords[0][0].toFixed(2)},${h} Z`;
+    const last = coords[coords.length - 1];
+    const changePct = ((vals[vals.length - 1] - vals[0]) / vals[0]) * 100;
+    const up = changePct >= 0;
+    const lineColor = up ? 'var(--up)' : 'var(--down)';
+    const fillColor = up ? 'rgba(126,196,154,0.14)' : 'rgba(207,139,111,0.14)';
+
+    chart.innerHTML = `
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+        <path d="${areaD}" fill="${fillColor}" stroke="none"></path>
+        <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></path>
+        <circle cx="${last[0].toFixed(2)}" cy="${last[1].toFixed(2)}" r="2.4" fill="${lineColor}"></circle>
+      </svg>`;
+
+    const deltaEl = $('sparklineDelta');
+    deltaEl.textContent = (up ? '▲ ' : '▼ ') + Math.abs(changePct).toFixed(2) + '%';
+    deltaEl.className = 'sparkline-delta ' + (up ? 'up' : 'down');
+  }
+
+  function buildDropdown(panelId, onSelect){
+    const panel = $(panelId);
+    panel.innerHTML = `
+      <div class="dropdown-search"><input type="text" placeholder="Search currency…" autocomplete="off"></div>
+      <div class="dropdown-list" role="listbox"></div>
+    `;
+    const searchInput = panel.querySelector('input');
+    const list = panel.querySelector('.dropdown-list');
+    let activeIndex = -1;
+    let currentMatches = [];
+
+    function setActive(i){
+      const items = list.querySelectorAll('.dropdown-item');
+      items.forEach(el => el.classList.remove('active'));
+      if (items[i]){
+        items[i].classList.add('active');
+        items[i].scrollIntoView({ block:'nearest' });
+      }
+      activeIndex = i;
+    }
+
+    function render(filter){
+      const f = (filter || '').toLowerCase();
+      currentMatches = CURRENCIES.filter(c =>
+        c.code.toLowerCase().includes(f) || c.name.toLowerCase().includes(f)
+      );
+      activeIndex = -1;
+      if (!currentMatches.length){
+        list.innerHTML = `<div class="dropdown-empty">No currencies match “${filter}”</div>`;
+        return;
+      }
+      list.innerHTML = currentMatches.map(c =>
+        `<div class="dropdown-item" role="option" data-code="${c.code}">
+          <span class="flag">${c.flag}</span>
+          <span class="code">${c.code}</span>
+          <span class="name">${c.name}</span>
+        </div>`
+      ).join('');
+      list.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', () => { onSelect(item.dataset.code); closeAllDropdowns(); });
+      });
+    }
+    render('');
+    searchInput.addEventListener('input', (e) => render(e.target.value));
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown'){ e.preventDefault(); setActive(Math.min(activeIndex + 1, currentMatches.length - 1)); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); setActive(Math.max(activeIndex - 1, 0)); }
+      else if (e.key === 'Enter'){ e.preventDefault(); if (currentMatches[activeIndex]){ onSelect(currentMatches[activeIndex].code); closeAllDropdowns(); } }
+    });
+    panel._render = render;
+    panel._searchInput = searchInput;
+  }
+
+  function closeAllDropdowns(){
+    ['fromDropdown','toDropdown'].forEach(id => $(id).classList.remove('open'));
+    $('fromBtn').setAttribute('aria-expanded','false');
+    $('toBtn').setAttribute('aria-expanded','false');
+  }
+
+  function toggleDropdown(panelId, btnId){
+    const panel = $(panelId);
+    const isOpen = panel.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen){
+      panel.classList.add('open');
+      $(btnId).setAttribute('aria-expanded','true');
+      panel._render('');
+      panel._searchInput.value = '';
+      setTimeout(() => panel._searchInput.focus(), 30);
+    }
+  }
+
+  const RATE_SOURCES = [
+    {
+      name: 'open.er-api.com',
+      url: 'https://open.er-api.com/v6/latest/USD',
+      parse: (data) => (data && data.result === 'success' && data.rates) ? data.rates : null,
+    },
+    {
+      name: 'jsdelivr-currency-api',
+      url: 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',
+      parse: (data) => {
+        if (!data || !data.usd) return null;
+        const out = {};
+        for (const k in data.usd) out[k.toUpperCase()] = data.usd[k];
+        return out;
+      },
+    },
+  ];
+
+  async function fetchRates(){
+    const stamp = $('statusStamp');
+    const statusText = $('statusText');
+    const updatedText = $('updatedText');
+    const refreshBtn = $('refreshBtn');
+    refreshBtn.classList.add('spinning');
+    updatedText.textContent = 'refreshing…';
+
+    let got = null;
+    for (const src of RATE_SOURCES){
+      try {
+        const res = await fetch(src.url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const rates = src.parse(data);
+        if (rates && rates.USD !== undefined && Object.keys(rates).length > 5){ got = rates; break; }
+      } catch (err){ /* try next source */ }
+    }
+
+    if (got){
+      state.rates = got;
+      state.live = true;
+      state.lastUpdated = new Date();
+      stamp.classList.remove('offline');
+      statusText.textContent = 'Live';
+    } else {
+      state.rates = FALLBACK_RATES;
+      state.live = false;
+      state.lastUpdated = new Date();
+      stamp.classList.add('offline');
+      statusText.textContent = 'Snapshot';
+    }
+
+    refreshBtn.classList.remove('spinning');
+    renderTime();
+    recompute('from');
+    buildTicker();
+  }
+
+  function renderTime(){
+    if (!state.lastUpdated) return;
+    if (state.live){
+      const h = state.lastUpdated.getHours().toString().padStart(2,'0');
+      const m = state.lastUpdated.getMinutes().toString().padStart(2,'0');
+      $('updatedText').textContent = 'updated ' + h + ':' + m;
+    } else {
+      $('updatedText').textContent = 'snapshot ' + FALLBACK_SNAPSHOT_DATE;
+    }
+  }
+
+  function stampTicketId(){
+    const now = new Date();
+    const y = now.getFullYear(), m = (now.getMonth()+1).toString().padStart(2,'0'), d = now.getDate().toString().padStart(2,'0');
+    const suffix = Math.random().toString(16).slice(2,6).toUpperCase();
+    $('ticketId').textContent = `NO. ${y}${m}${d} · ${suffix}`;
+  }
+
+  // wire up events
+  $('fromBtn').addEventListener('click', () => toggleDropdown('fromDropdown','fromBtn'));
+  $('toBtn').addEventListener('click', () => toggleDropdown('toDropdown','toBtn'));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.currency-select')) closeAllDropdowns(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(); });
+
+  buildDropdown('fromDropdown', (code) => {
+    if (code === state.to){ state.to = state.from; }
+    state.from = code;
+    updateFieldDisplay(); recompute('from'); buildTicker(); updateSparkline();
+  });
+  buildDropdown('toDropdown', (code) => {
+    if (code === state.from){ state.from = state.to; }
+    state.to = code;
+    updateFieldDisplay(); recompute('from'); buildTicker(); updateSparkline();
+  });
+
+  $('fromAmount').addEventListener('input', () => recompute('from'));
+  $('toAmount').addEventListener('input', () => recompute('to'));
+  $('fromAmount').addEventListener('blur', () => { $('fromAmount').value = fmtNumber(parseAmount($('fromAmount').value)); });
+  $('toAmount').addEventListener('blur', () => { $('toAmount').value = fmtNumber(parseAmount($('toAmount').value)); });
+
+  $('swapBtn').addEventListener('click', () => {
+    const btn = $('swapBtn');
+    btn.classList.add('spin');
+    setTimeout(() => btn.classList.remove('spin'), 320);
+    [state.from, state.to] = [state.to, state.from];
+    updateFieldDisplay(); recompute('from'); buildTicker(); updateSparkline();
+  });
+
+  $('refreshBtn').addEventListener('click', fetchRates);
+
+  $('starBtn').addEventListener('click', toggleFavourite);
+
+  $('copyBtn').addEventListener('click', () => {
+    const text = `${$('fromAmount').value} ${state.from} = ${$('toAmount').value} ${state.to}`;
+    navigator.clipboard?.writeText(text).catch(() => {});
+    const btn = $('copyBtn');
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy result'; btn.classList.remove('copied'); }, 1600);
+  });
+
+  $('ticker').addEventListener('mouseenter', () => $('ticker').classList.add('paused'));
+  $('ticker').addEventListener('mouseleave', () => $('ticker').classList.remove('paused'));
+
+  $('themeBtn').addEventListener('click', () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  });
+
+  // init
+  updateFieldDisplay();
+  buildQuickPairs();
+  updateStarBtn();
+  stampTicketId();
+  fetchRates();
+  updateSparkline();
+})();
+</script>
+
+</body>
+</html>
